@@ -5,13 +5,22 @@ local luaunit = require "luaunit"
 -- Spaces
 local space = lpeg.S(" \t\n") ^ 0
 
+-- Comparisons
+local comparison =
+    lpeg.P("==") +
+    lpeg.P(">=") +
+    lpeg.P("<=") +
+    lpeg.P(">") +
+    lpeg.P("<") +
+    lpeg.P("!=")
+
 -- Hexadecimals
 local hexLeader = "0" * (lpeg.P("x") + lpeg.P("X"))
 local hexContent = (lpeg.R("af", "AF") + lpeg.R("09")) ^ -6
 local hexadecimal = hexLeader * hexContent * space
 
 -- Integers
-local numeral = lpeg.R("09") ^ 1 * -lpeg.S("Xx") * space
+local numeral = lpeg.S("-") ^ -1 * lpeg.R("09") ^ 1 * -lpeg.S("Xx") * space
 
 -- All Numbers
 local function node(num)
@@ -20,10 +29,15 @@ end
 
 local numbers = (hexadecimal + numeral) / node
 
+-- Parenthesis
+local OP = "(" * space
+local CP = ")" * space
+
 -- Operators
 local opA = lpeg.C(lpeg.S("+-")) * space
 local opM = lpeg.C(lpeg.S("%*/")) * space
 local opP = lpeg.C(lpeg.S("^")) * space
+local opC = lpeg.C(comparison) * space
 
 -- "Grammar"
 local function foldBin(lst)
@@ -36,12 +50,22 @@ local function foldBin(lst)
   return tree
 end
 
-local power = space * lpeg.Ct(numbers * (opP * numbers) ^ 0) / foldBin
-local term = space * lpeg.Ct(power * (opM * power) ^ 0) / foldBin
-local exp = space * lpeg.Ct(term * (opA * term) ^ 0) / foldBin
+local value = lpeg.V("value")
+local power = lpeg.V("power")
+local product = lpeg.V("product")
+local sum = lpeg.V("sum")
+local comp = lpeg.V("comp")
+
+g = space * lpeg.P { "comp",
+  value = numbers + OP * sum * CP,
+  power = space * lpeg.Ct(value * (opP * value) ^ 0) / foldBin,
+  product = space * lpeg.Ct(power * (opM * power) ^ 0) / foldBin,
+  sum = space * lpeg.Ct(product * (opA * product) ^ 0) / foldBin,
+  comp = lpeg.Ct(sum * (opC * sum) ^ 0) / foldBin
+} * -1
 
 local function parse(input)
-  return exp:match(input)
+  return g:match(input)
 end
 
 -- Back End
@@ -57,7 +81,13 @@ local ops = {
   ["*"] = "mul",
   ["/"] = "div",
   ["%"] = "mod",
-  ["^"] = "pow"
+  ["^"] = "pow",
+  [">"] = "gt",
+  ["<"] = "lt",
+  [">="] = "gte",
+  ["<="] = "lte",
+  ["=="] = "eq",
+  ["!="] = "neq"
 }
 
 local function codeExp(state, ast)
@@ -108,6 +138,24 @@ local function run(code, stack)
     elseif code[pc] == "pow" then
       stack[top - 1] = stack[top - 1] ^ stack[top]
       top = top - 1
+    elseif code[pc] == "gt" then
+      stack[top - 1] = (stack[top - 1] > stack[top]) and 1 or 0
+      top = top - 1
+    elseif code[pc] == "lt" then
+      stack[top - 1] = (stack[top - 1] < stack[top]) and 1 or 0
+      top = top - 1
+    elseif code[pc] == "gte" then
+      stack[top - 1] = (stack[top - 1] >= stack[top]) and 1 or 0
+      top = top - 1
+    elseif code[pc] == "lte" then
+      stack[top - 1] = (stack[top - 1] <= stack[top]) and 1 or 0
+      top = top - 1
+    elseif code[pc] == "eq" then
+      stack[top - 1] = (stack[top - 1] == stack[top]) and 1 or 0
+      top = top - 1
+    elseif code[pc] == "neq" then
+      stack[top - 1] = (stack[top - 1] ~= stack[top]) and 1 or 0
+      top = top - 1
     else
       error("unknown instruction")
     end
@@ -145,6 +193,39 @@ function TestNumbers()
 
   luaunit.assertEquals(testNumbers("4 * 5 ^ 2"), 100)
   luaunit.assertEquals(testNumbers("28 + 10 ^ 2"), 128)
+
+  luaunit.assertEquals(testNumbers("(15 + 10) * 2"), 50)
+  luaunit.assertEquals(testNumbers("(1 + 2) ^ 2 % 3"), 0)
+  luaunit.assertEquals(testNumbers("(1 + 2) ^ 2 % 3"), 0)
+
+  luaunit.assertEquals(testNumbers("1 + -1"), 0)
+  luaunit.assertEquals(testNumbers("5 * -2"), -10)
+  luaunit.assertEquals(testNumbers("5 / -2"), -2.5)
+
+  luaunit.assertEquals(testNumbers("1 > 0"), 1)
+  luaunit.assertEquals(testNumbers("(1 + 1) > (2 + 2)"), 0)
+
+  luaunit.assertEquals(testNumbers("1 < 0"), 0)
+  luaunit.assertEquals(testNumbers("(1 / 1) < (2 * 2)"), 1)
+
+  luaunit.assertEquals(testNumbers("1 < 0"), 0)
+  luaunit.assertEquals(testNumbers("(1 / 1) < (2 * 2)"), 1)
+
+  luaunit.assertEquals(testNumbers("1 >= 0"), 1)
+  luaunit.assertEquals(testNumbers("1 >= 1"), 1)
+  luaunit.assertEquals(testNumbers("(5 - 3) >= (2 / 2)"), 1)
+
+  luaunit.assertEquals(testNumbers("1 <= 0"), 0)
+  luaunit.assertEquals(testNumbers("1 <= 1"), 1)
+  luaunit.assertEquals(testNumbers("(2 / 2) <= (5 - 3)"), 1)
+
+  luaunit.assertEquals(testNumbers("1 == 0"), 0)
+  luaunit.assertEquals(testNumbers("1 == 1"), 1)
+  luaunit.assertEquals(testNumbers("(2 / 2) == (1 * 1)"), 1)
+
+  luaunit.assertEquals(testNumbers("1 != 0"), 1)
+  luaunit.assertEquals(testNumbers("1 != 1"), 0)
+  luaunit.assertEquals(testNumbers("(5 / 2) != (6 * 1)"), 1)
 end
 
 os.exit(luaunit.LuaUnit.run())
