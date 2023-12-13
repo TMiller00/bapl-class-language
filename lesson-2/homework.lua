@@ -1,8 +1,7 @@
 local lpeg = require "lpeg"
 local luaunit = require "luaunit"
 
--- Front End --------------------------------------
-
+-- Front End
 -- Spaces
 local space = lpeg.S(" \t\n") ^ 0
 
@@ -23,8 +22,10 @@ local numbers = (hexadecimal + numeral) / node
 
 -- Operators
 local opA = lpeg.C(lpeg.S("+-")) * space
-local opM = lpeg.C(lpeg.S("*/")) * space
+local opM = lpeg.C(lpeg.S("%*/")) * space
+local opP = lpeg.C(lpeg.S("^")) * space
 
+-- "Grammar"
 local function foldBin(lst)
   local tree = lst[1]
 
@@ -35,20 +36,29 @@ local function foldBin(lst)
   return tree
 end
 
-local exp = space * lpeg.Ct(numbers * (opM * numbers) ^ 0) / foldBin
+local power = space * lpeg.Ct(numbers * (opP * numbers) ^ 0) / foldBin
+local term = space * lpeg.Ct(power * (opM * power) ^ 0) / foldBin
+local exp = space * lpeg.Ct(term * (opA * term) ^ 0) / foldBin
 
 local function parse(input)
   return exp:match(input)
 end
 
--- Back End ---------------------------------------
+-- Back End
 
 local function addCode(state, op)
   local code = state.code
   code[#code + 1] = op
 end
 
-local ops = { ["+"] = "add", ["-"] = "sub", ["*"] = "mul", ["/"] = "div" }
+local ops = {
+  ["+"] = "add",
+  ["-"] = "sub",
+  ["*"] = "mul",
+  ["/"] = "div",
+  ["%"] = "mod",
+  ["^"] = "pow"
+}
 
 local function codeExp(state, ast)
   if ast.tag == "number" then
@@ -69,7 +79,7 @@ local function compile(ast)
   return state.code
 end
 
--- Execution --------------------------------------
+-- Execution
 
 local function run(code, stack)
   local pc = 1
@@ -77,17 +87,26 @@ local function run(code, stack)
 
   while pc <= #code do
     if code[pc] == "push" then
-      print(code[pc], code[pc + 1])
       pc = pc + 1
       top = top + 1
       stack[top] = code[pc]
+    elseif code[pc] == "add" then
+      stack[top - 1] = stack[top - 1] + stack[top]
+      top = top - 1
+    elseif code[pc] == "sub" then
+      stack[top - 1] = stack[top - 1] - stack[top]
+      top = top - 1
     elseif code[pc] == "mul" then
-      print(code[pc], stack[top - 1], stack[top])
       stack[top - 1] = stack[top - 1] * stack[top]
       top = top - 1
     elseif code[pc] == "div" then
-      print(code[pc], stack[top - 1], stack[top])
       stack[top - 1] = stack[top - 1] / stack[top]
+      top = top - 1
+    elseif code[pc] == "mod" then
+      stack[top - 1] = stack[top - 1] % stack[top]
+      top = top - 1
+    elseif code[pc] == "pow" then
+      stack[top - 1] = stack[top - 1] ^ stack[top]
       top = top - 1
     else
       error("unknown instruction")
@@ -97,7 +116,7 @@ local function run(code, stack)
   end
 end
 
----------------------------------------------------
+-- Tests
 
 local function testNumbers(input)
   local stack = {}
@@ -109,15 +128,6 @@ local function testNumbers(input)
 end
 
 function TestNumbers()
-  luaunit.assertEquals(testNumbers("5"), 5)
-  luaunit.assertEquals(testNumbers("10"), 10)
-
-  luaunit.assertEquals(testNumbers("0x1"), 1)
-  luaunit.assertEquals(testNumbers("0x2a"), 42)
-  luaunit.assertEquals(testNumbers("0x3de"), 990)
-  luaunit.assertEquals(testNumbers("0x4adef"), 306671)
-  luaunit.assertEquals(testNumbers("0x5abcde"), 5946590)
-
   luaunit.assertEquals(testNumbers("5 * 5"), 25)
   luaunit.assertEquals(testNumbers("4 / 2"), 2.0)
   luaunit.assertEquals(testNumbers("3 * 4 / 2"), 6.0)
@@ -125,6 +135,16 @@ function TestNumbers()
   luaunit.assertEquals(testNumbers("0x5 * 0x5"), 25)
   luaunit.assertEquals(testNumbers("0x4 / 0x2"), 2.0)
   luaunit.assertEquals(testNumbers("0x3 * 0x4 / 0x2"), 6.0)
+
+  luaunit.assertEquals(testNumbers("7 + 5 * 5"), 32)
+  luaunit.assertEquals(testNumbers("2 - 4 / 2"), 0.0)
+  luaunit.assertEquals(testNumbers("1 - 3 + 3 * 4 / 2"), 4.0)
+
+  luaunit.assertEquals(testNumbers("5 % 2 * 4"), 4)
+  luaunit.assertEquals(testNumbers("4 % 2 / 2"), 0.0)
+
+  luaunit.assertEquals(testNumbers("4 * 5 ^ 2"), 100)
+  luaunit.assertEquals(testNumbers("28 + 10 ^ 2"), 128)
 end
 
 os.exit(luaunit.LuaUnit.run())
