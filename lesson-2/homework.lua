@@ -2,8 +2,10 @@ local lpeg = require "lpeg"
 local luaunit = require "luaunit"
 
 -- Front End
--- Spaces
+-- Utilities
 local space = lpeg.S(" \t\n") ^ 0
+local negative = lpeg.S("-") ^ -1
+local digits = lpeg.R("09") ^ 1
 
 -- Comparisons
 local comparison =
@@ -19,15 +21,16 @@ local hexLeader = "0" * (lpeg.P("x") + lpeg.P("X"))
 local hexContent = (lpeg.R("af", "AF") + lpeg.R("09")) ^ -6
 local hexadecimal = hexLeader * hexContent * space
 
--- Integers
-local numeral = lpeg.S("-") ^ -1 * lpeg.R("09") ^ 1 * -lpeg.S("Xx") * space
+-- Numbers
+local integers = negative * digits * -lpeg.S("Xx")
+local floats = negative * digits ^ -1 * "." * digits
+local scientific = negative * digits * lpeg.S("Ee") * digits
 
--- All Numbers
 local function node(num)
   return { tag = "number", val = tonumber(num) }
 end
 
-local numbers = (hexadecimal + numeral) / node
+local numbers = (hexadecimal + floats + scientific + integers) * space / node
 
 -- Parenthesis
 local OP = "(" * space
@@ -57,7 +60,7 @@ local sum = lpeg.V("sum")
 local comp = lpeg.V("comp")
 
 g = space * lpeg.P { "comp",
-  value = numbers + OP * sum * CP,
+  value = numbers + OP * comp * CP,
   power = space * lpeg.Ct(value * (opP * value) ^ 0) / foldBin,
   product = space * lpeg.Ct(power * (opM * power) ^ 0) / foldBin,
   sum = space * lpeg.Ct(product * (opA * product) ^ 0) / foldBin,
@@ -176,6 +179,13 @@ local function testNumbers(input)
 end
 
 function TestNumbers()
+  luaunit.assertEquals(testNumbers("  25  "), 25)
+  luaunit.assertEquals(testNumbers("25.0"), 25)
+  luaunit.assertEquals(testNumbers(".5"), 0.5)
+  luaunit.assertEquals(testNumbers("-0.5"), -0.5)
+  luaunit.assertEquals(testNumbers("-.5"), -0.5)
+  luaunit.assertEquals(testNumbers("123e12"), 1.23e+14)
+
   luaunit.assertEquals(testNumbers("5 * 5"), 25)
   luaunit.assertEquals(testNumbers("4 / 2"), 2.0)
   luaunit.assertEquals(testNumbers("3 * 4 / 2"), 6.0)
@@ -226,6 +236,12 @@ function TestNumbers()
   luaunit.assertEquals(testNumbers("1 != 0"), 1)
   luaunit.assertEquals(testNumbers("1 != 1"), 0)
   luaunit.assertEquals(testNumbers("(5 / 2) != (6 * 1)"), 1)
+
+  luaunit.assertEquals(testNumbers("1 != 0.1"), 1)
+  luaunit.assertEquals(testNumbers("1 + 1.1"), 2.1)
+  luaunit.assertEquals(testNumbers("2.5 / 2"), 1.25)
+
+  luaunit.assertEquals(testNumbers("((5 / 2) != (6 * 1)) + 1"), 2)
 end
 
 os.exit(luaunit.LuaUnit.run())
