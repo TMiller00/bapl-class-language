@@ -12,6 +12,10 @@ local function nodeAssign(id, exp)
   end
 end
 
+local function nodeConsole(exp)
+  return { tag = "print", exp = exp }
+end
+
 local function nodeNum(num)
   return { tag = "number", val = tonumber(num) }
 end
@@ -22,6 +26,10 @@ local function nodeSequence(st1, st2)
   else
     return st1
   end
+end
+
+local function nodeReturn(exp)
+  return { tag = "return", exp = exp }
 end
 
 local function nodeVar(var)
@@ -41,6 +49,8 @@ local numeral = digit ^ 1
 
 local Assgn = "=" * space
 local SC = ";" * space
+local ret = "return" * space
+local console = "@" * space
 
 -- Numbers
 local floats = negative * numeral ^ -1 * "." * numeral / nodeNum * space
@@ -89,7 +99,7 @@ local value = lpeg.V("value")
 local power = lpeg.V("power")
 local product = lpeg.V("product")
 local sum = lpeg.V("sum")
-local comparison = lpeg.V("comparison")
+local expression = lpeg.V("expression")
 local statement = lpeg.V("statement")
 local statements = lpeg.V("statements")
 local block = lpeg.V("block")
@@ -97,12 +107,16 @@ local block = lpeg.V("block")
 g = space * lpeg.P { statements,
   statements = statement * (SC * statements) ^ -1 / nodeSequence,
   block = OB * statements * SC ^ -1 * CB,
-  statement = block + (ID * Assgn * comparison) ^ -1 / nodeAssign,
-  value = numbers + OP * comparison * CP + var,
+  statement =
+      block +
+      console * expression / nodeConsole +
+      (ret * expression) / nodeReturn +
+      (ID * Assgn * expression) ^ -1 / nodeAssign,
+  value = numbers + OP * expression * CP + var,
   power = space * lpeg.Ct(value * (opExponent * value) ^ 0) / foldBin,
   product = space * lpeg.Ct(power * (opM * power) ^ 0) / foldBin,
   sum = space * lpeg.Ct(product * (opA * product) ^ 0) / foldBin,
-  comparison = lpeg.Ct(sum * (opC * sum) ^ -1) / foldBin
+  expression = space * lpeg.Ct(sum * (opC * sum) ^ -1) / foldBin
 } * -1
 
 local function parse(input)
@@ -154,6 +168,12 @@ local function codeStatement(state, ast)
   elseif ast.tag == "sequence" then
     codeStatement(state, ast.st1)
     codeStatement(state, ast.st2)
+  elseif ast.tag == "return" then
+    codeExpression(state, ast.exp)
+    addCode(state, "return")
+  elseif ast.tag == "print" then
+    codeExpression(state, ast.exp)
+    addCode(state, "print")
   elseif ast.tag == "empty_statement" then
     -- Do nothing
   else
@@ -164,6 +184,11 @@ end
 local function compile(ast)
   local state = { code = {} }
   codeStatement(state, ast)
+
+  addCode(state, "push")
+  addCode(state, 0)
+  addCode(state, "return")
+
   return state.code
 end
 
@@ -173,8 +198,19 @@ local function run(code, mem, stack)
   local pc = 1
   local top = 0
 
-  while pc <= #code do
-    if code[pc] == "push" then
+  while true do
+    --[[
+    io.write("--> ")
+    for i = 1, top do io.write(stack[i], " ") end
+    io.write("\n", code[pc], "\n")
+    --]]
+
+    if code[pc] == "return" then
+      return
+    elseif code[pc] == "print" then
+      io.write(stack[top], "\n")
+      top = top - 1
+    elseif code[pc] == "push" then
       pc = pc + 1
       top = top + 1
       stack[top] = code[pc]
@@ -223,7 +259,7 @@ local function run(code, mem, stack)
       pc = pc + 1
       local id = code[pc]
       mem[id] = stack[top]
-      top = top + 1
+      top = top - 1
     else
       error("unknown instruction")
     end
@@ -242,13 +278,10 @@ function Main(input)
   end
 
   local ast = parse(input)
-  -- print(pt.pt(ast))
-
   local code = compile(ast)
-  -- print(pt.pt(code))
   run(code, mem, stack)
 
-  return mem
+  return stack[1]
 end
 
 -- print(pt.pt(Main()))
