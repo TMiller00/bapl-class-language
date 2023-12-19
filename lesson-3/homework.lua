@@ -13,7 +13,7 @@ local function nodeAssign(id, exp)
 end
 
 local function nodeConsole(exp)
-  return { tag = "print", exp = exp }
+  return { tag = "console", exp = exp }
 end
 
 local function nodeNum(num)
@@ -144,6 +144,24 @@ local function addCode(state, op)
   code[#code + 1] = op
 end
 
+local function encodeVariable(op, state, id)
+  local num = state.vars[id]
+
+  if not num then
+    if op == "load" then
+      error("Undefined variable")
+    elseif op == "store" then
+      num = state.nvars + 1
+      state.nvars = num
+      state.vars[id] = num
+    else
+      error("Undefined op code")
+    end
+  end
+
+  return num
+end
+
 local function codeExpression(state, ast)
   if ast.tag == "number" then
     addCode(state, "push")
@@ -154,7 +172,7 @@ local function codeExpression(state, ast)
     addCode(state, ops[ast.op])
   elseif ast.tag == "variable" then
     addCode(state, "load")
-    addCode(state, ast.var)
+    addCode(state, encodeVariable("load", state, ast.var))
   else
     error("invalid tree")
   end
@@ -164,16 +182,16 @@ local function codeStatement(state, ast)
   if ast.tag == "assignment" then
     codeExpression(state, ast.exp)
     addCode(state, "store")
-    addCode(state, ast.id)
+    addCode(state, encodeVariable("store", state, ast.id))
   elseif ast.tag == "sequence" then
     codeStatement(state, ast.st1)
     codeStatement(state, ast.st2)
   elseif ast.tag == "return" then
     codeExpression(state, ast.exp)
     addCode(state, "return")
-  elseif ast.tag == "print" then
+  elseif ast.tag == "console" then
     codeExpression(state, ast.exp)
-    addCode(state, "print")
+    addCode(state, "console")
   elseif ast.tag == "empty_statement" then
     -- Do nothing
   else
@@ -182,7 +200,7 @@ local function codeStatement(state, ast)
 end
 
 local function compile(ast)
-  local state = { code = {} }
+  local state = { code = {}, vars = {}, nvars = 0 }
   codeStatement(state, ast)
 
   addCode(state, "push")
@@ -207,7 +225,7 @@ local function run(code, mem, stack)
 
     if code[pc] == "return" then
       return
-    elseif code[pc] == "print" then
+    elseif code[pc] == "console" then
       io.write(stack[top], "\n")
       top = top - 1
     elseif code[pc] == "push" then
