@@ -14,9 +14,10 @@ function Main(input)
   local stack = {}
   local mem = {}
 
-  if input == nil then
-    input = io.read()
+  if not input then
+    input = io.read("*all")
   end
+
 
   local ast = parser.parse(input)
   local code = compiler.compile(ast)

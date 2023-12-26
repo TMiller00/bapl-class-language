@@ -1,22 +1,41 @@
 local lpeg = require "lpeg"
 local pt = require "pt"
 
-local function I(msg)
-  return lpeg.P(function()
-    print(msg); return true
-  end)
-end
-
 local maxmatch = 0
-local function matchPosition(_, position)
+local linecount = 1
+local function matchPosition(i, position)
+  local index = string.sub(i, position, position + 1)
+
+  if string.byte(index) == 59 then
+    linecount = linecount + 1
+  end
+
   maxmatch = math.max(maxmatch, position);
   return true
 end
 
-local function syntaxError(input, max)
-  io.stderr:write("SyntaxError", "\n")
-  io.stderr:write(string.sub(input, max - 5, max - 1),
-    "|", string.sub(input, max, max + 6), "\n")
+local function WS(n)
+  return string.rep(" ", n)
+end
+
+local function getLine(input, line)
+  local substrings = {}
+
+  for substring in input:gmatch("([^" .. "\n" .. "]+)") do
+    table.insert(substrings, substring)
+  end
+
+  return substrings[line]
+end
+
+local function syntaxError(input, max, line)
+  local lineError = getLine(input, line)
+  local error = string.sub(input, max - math.floor(max / line), max - 3)
+
+  io.stderr:write("** (SyntaxError): ", line, ":", #error, "\n")
+  io.stderr:write(WS(4), "|", "\n")
+  io.stderr:write(WS(3 - #tostring(line)), line, WS(1), "|", WS(4), lineError, ("\n"))
+  io.stderr:write(WS(4), "|", WS(4 + #error), "^", "\n")
 end
 
 local function nodeAssign(id, exp)
@@ -134,7 +153,7 @@ local power = lpeg.V("power")
 
 g = space * lpeg.P { statements,
   statements = statement * (SC * statements) ^ -1 / nodeSequence,
-  block = OB * statements * SC ^ -1 * CB,
+  block = OB * statements * (SC ^ -1) * CB,
   statement =
       block +
       (ID * Assgn * expression) / nodeAssign +
@@ -156,7 +175,7 @@ function Parser.parse(input)
   local result = g:match(input)
 
   if (not result) then
-    syntaxError(input, maxmatch)
+    syntaxError(input, maxmatch, linecount)
     os.exit(1)
   end
 
