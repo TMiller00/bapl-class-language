@@ -71,7 +71,7 @@ local function nodeVariable(var)
 end
 
 -- Tokens
-local space = lpeg.S(" \n\t") ^ 0 * lpeg.P(matchPosition)
+local space = lpeg.V("space")
 
 local alpha = lpeg.R("AZ", "az")
 local digit = lpeg.R("09")
@@ -84,6 +84,9 @@ local Assgn = "=" * space
 local SC = ";" * space
 local ret = "return" * space
 local console = "@" * space
+
+local comment = lpeg.P("#") * (lpeg.P(1) - "\n") ^ 0
+local multilineComment = "#{" * (lpeg.P(1) - "#}") ^ 0 - "#}"
 
 -- Numbers
 local floats = numeral ^ -1 * "." * numeral / nodeNum
@@ -151,7 +154,8 @@ local unary = lpeg.V("unary")
 local primary = lpeg.V("primary")
 local power = lpeg.V("power")
 
-g = space * lpeg.P { statements,
+g = lpeg.P { "program",
+  program = space * statements * -1,
   statements = statement * (SC * statements) ^ -1 / nodeSequence,
   block = OB * statements * (SC ^ -1) * CB,
   statement =
@@ -166,8 +170,9 @@ g = space * lpeg.P { statements,
   term = lpeg.Ct(factor * (opTerm * factor) ^ 0) / foldBin,
   comparison = lpeg.Ct(term * (opComparison * term) ^ 0) / foldBin,
   equality = lpeg.Ct(comparison * (opEquality * comparison) ^ 0) / foldBin,
-  expression = equality
-} * -1
+  expression = equality,
+  space = (lpeg.S(" \n\t") + multilineComment + comment) ^ 0 * lpeg.P(matchPosition)
+}
 
 local Parser = {}
 
