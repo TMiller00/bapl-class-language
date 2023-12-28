@@ -33,4 +33,15 @@ function TestStatements()
   -- luaunit.assertEquals(Main("g = 10 > 2 == 1"), { g = 1 })
 end
 
+function TestDecimals()
+  luaunit.assertEquals(Main("x = 1.1 + .9; return x"), 2.0)
+  luaunit.assertEquals(Main("x = 1. + 1; return x"), 2.0)
+end
+
+function TestHexadecimal()
+  luaunit.assertEquals(Main("x = 0x15; return x"), 21)
+  luaunit.assertEquals(Main("x = 0x15 + 0x16; return x"), 43)
+  luaunit.assertEquals(Main("x = 0x16 / 2; return x"), 11)
+end
+
 os.exit(luaunit.LuaUnit.run())

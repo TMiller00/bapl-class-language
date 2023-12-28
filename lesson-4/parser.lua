@@ -1,6 +1,12 @@
 local lpeg = require "lpeg"
 local pt = require "pt"
 
+local function I(msg)
+  return lpeg.P(function()
+    print(msg); return true
+  end)
+end
+
 local maxmatch = 0
 local linecount = 1
 local function matchPosition(i, position)
@@ -30,12 +36,12 @@ end
 
 local function syntaxError(input, max, line)
   local lineError = getLine(input, line)
-  local error = string.sub(input, max - math.floor(max / line), max - 3)
+  local errorPosition = math.floor(max / line)
 
-  io.stderr:write("** (SyntaxError): ", line, ":", #error, "\n")
+  io.stderr:write("** (SyntaxError): ", line, ":", errorPosition, "\n")
   io.stderr:write(WS(4), "|", "\n")
   io.stderr:write(WS(3 - #tostring(line)), line, WS(1), "|", WS(4), lineError, ("\n"))
-  io.stderr:write(WS(4), "|", WS(4 + #error), "^", "\n")
+  io.stderr:write(WS(4), "|", WS(4), WS(errorPosition - 1), "^", "\n")
 end
 
 local function nodeAssign(id, exp)
@@ -76,43 +82,77 @@ local space = lpeg.V("space")
 local alpha = lpeg.R("AZ", "az")
 local digit = lpeg.R("09")
 local underscore = lpeg.S("_")
+local decimal = lpeg.P(".")
 
 local alphanum = alpha + digit + underscore
 local numeral = digit ^ 1
 
-local Assgn = "=" * space
-local SC = ";" * space
-local ret = "return" * space
-local console = "@" * space
+-- Utilties For Tokens and Reserved Words
+
+-- My preference is not to use this function,
+-- but keeping it here for reference
+
+local function Token(t)
+  return t * space
+end
+
+local reservedWords = { "return", "if" }
+local excludedWords = lpeg.P(false)
+
+for i = 1, #reservedWords do
+  excludedWords = excludedWords + reservedWords[i]
+end
+
+excludedWords = excludedWords * -alphanum
+
+local function ReservedWord(rw)
+  assert(excludedWords:match(rw))
+  return rw * -alphanum * space
+end
+
+local function ReservedWordsWithMatches(input, position)
+  for i = 1, #reservedWords do
+    local currentWord = string.sub(input, position - #reservedWords[i] - 1, position - 2)
+
+    if (reservedWords[i] == currentWord) then
+      return false
+    end
+  end
+
+  return true
+end
+
+-- Assignment
+
+local Assgn = Token("=")
+local SC = Token(";")
+local ret = ReservedWord("return")
+local console = Token("@")
 
 local comment = lpeg.P("#") * (lpeg.P(1) - "\n") ^ 0
 local multilineComment = "#{" * (lpeg.P(1) - "#}") ^ 0 - "#}"
 
 -- Numbers
-local floats = numeral ^ -1 * "." * numeral / nodeNum
-local hexadecimal = "0" * lpeg.S("Xx") * (lpeg.R("af", "AF") + digit) ^ -6 / nodeNum
-local integers = numeral * -lpeg.S("Xx") / nodeNum
+local floats = numeral ^ -1 * decimal * numeral ^ -1 / nodeNum
+local hexadecimal = "0" * lpeg.S("Xx") * lpeg.R("09", "af", "AF") ^ 1 / nodeNum
+local integers = numeral ^ 1 / nodeNum
 local scientific = numeral * lpeg.S("Ee") * numeral / nodeNum
 
 local numbers = (hexadecimal + floats + scientific + integers) * space
 
 -- Parenthesis and Braces
-local OP = "(" * space
-local CP = ")" * space
-local OB = "{" * space
-local CB = "}" * space
+local OP = Token("(")
+local CP = Token(")")
+local OB = Token("{")
+local CB = Token("}")
 
 -- Operators
 local equalityOps = lpeg.P("==") + lpeg.P("!=")
-local comparisonOps =
-    lpeg.P("<") * -lpeg.P("=") +
-    lpeg.P(">") * -lpeg.P("=") +
-    lpeg.P("<=") +
-    lpeg.P(">=")
+local comparisonOps = lpeg.P("<=") + lpeg.P(">=") + lpeg.P("<") + lpeg.P(">")
 local termOps = lpeg.P("+") + lpeg.P("-")
 local factorOps = lpeg.P("*") + lpeg.P("/") + lpeg.P("%")
 
-local opComparison = lpeg.C(comparisonOps + equalityOps) * space
+local opComparison = lpeg.C(comparisonOps) * space
 local opEquality = lpeg.C(equalityOps) * space
 local opTerm = lpeg.C(termOps) * space
 local opFactor = lpeg.C(factorOps) * space
@@ -120,7 +160,9 @@ local opUnary = lpeg.C(lpeg.P("-"))
 local opExp = lpeg.C(lpeg.P("^")) * space
 
 -- Variables
-local ID = lpeg.C((underscore ^ 0) * alpha * alphanum ^ 0) * space
+-- local ID = (lpeg.C((underscore ^ 0) * alpha * alphanum ^ 0) - excludedWords) * space
+local ID = lpeg.C((underscore ^ 0) * alpha * alphanum ^ 0) * space * lpeg.P(ReservedWordsWithMatches)
+
 local variable = ID / nodeVariable
 
 -- "Grammar"
@@ -145,14 +187,14 @@ end
 local statements = lpeg.V("statements")
 local block = lpeg.V("block")
 local statement = lpeg.V("statement")
-local expression = lpeg.V("expression")
-local equality = lpeg.V("equality")
-local comparison = lpeg.V("comparison")
-local term = lpeg.V("term")
-local factor = lpeg.V("factor")
-local unary = lpeg.V("unary")
 local primary = lpeg.V("primary")
 local power = lpeg.V("power")
+local unary = lpeg.V("unary")
+local factor = lpeg.V("factor")
+local term = lpeg.V("term")
+local comparison = lpeg.V("comparison")
+local equality = lpeg.V("equality")
+local expression = lpeg.V("expression")
 
 g = lpeg.P { "program",
   program = space * statements * -1,
@@ -171,7 +213,7 @@ g = lpeg.P { "program",
   comparison = lpeg.Ct(term * (opComparison * term) ^ 0) / foldBin,
   equality = lpeg.Ct(comparison * (opEquality * comparison) ^ 0) / foldBin,
   expression = equality,
-  space = (lpeg.S(" \n\t") + multilineComment + comment) ^ 0 * lpeg.P(matchPosition)
+  space = (lpeg.S(" \t\n") + multilineComment + comment) ^ 0 * lpeg.P(matchPosition)
 }
 
 local Parser = {}
