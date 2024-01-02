@@ -52,4 +52,11 @@ function TestScientific()
   luaunit.assertEquals(Main("x = 1e-1; return x"), 0.1)
 end
 
+function TestUnary()
+  luaunit.assertEquals(Main("x = !(1 < 2); return x"), false)
+  luaunit.assertEquals(Main("x = !(1 + 2); return x"), false)
+  luaunit.assertEquals(Main("x = !2; return x"), false)
+  -- luaunit.assertEquals(Main("x = -(1 < 2); return x"), 1)
+end
+
 os.exit(luaunit.LuaUnit.run())

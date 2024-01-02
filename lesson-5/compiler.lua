@@ -15,6 +15,7 @@ local binaryOps = {
 
 local unaryOps = {
   ["-"] = "neg",
+  ["!"] = "not"
 }
 
 local function addCode(state, op)

@@ -152,7 +152,7 @@ local equalityOps = lpeg.P("==") + lpeg.P("!=")
 local comparisonOps = lpeg.P("<=") + lpeg.P(">=") + lpeg.P("<") + lpeg.P(">")
 local termOps = lpeg.P("+") + lpeg.P("-")
 local factorOps = lpeg.P("*") + lpeg.P("/") + lpeg.P("%")
-local unaryOps = lpeg.P("-")
+local unaryOps = lpeg.P("!") + lpeg.P("-")
 
 local opComparison = lpeg.C(comparisonOps) * space
 local opEquality = lpeg.C(equalityOps) * space
