@@ -44,6 +44,43 @@ local function syntaxError(input, max, line)
   io.stderr:write(WS(4), "|", WS(4), WS(errorPosition - 1), "^", "\n")
 end
 
+local function node(tag, ...)
+  local labels = table.pack(...)
+  local params = table.concat(labels, ", ")
+  local fields = string.gsub(params, "(%w+)", "%1 = %1")
+  local code = string.format(
+    "return function (%s) return {tag = '%s', %s} end",
+    params, tag, fields
+  )
+  return load(code)()
+end
+
+local function altNode(tag, ...)
+  local labels = table.pack(...)
+
+  return function(...)
+    local n = {}
+    local params = table.pack(...)
+
+    n["tag"] = tag
+
+    for kl, vl in ipairs(labels) do
+      for kp, vp in ipairs(params) do
+        if (kl == kp) then
+          n[vl] = vp
+        end
+      end
+    end
+
+    return n
+  end
+end
+
+local nodeConsole = node("console", "exp")
+local nodeReturn = node("return", "exp")
+local nodeVariable = node("variable", "var")
+local nodeNum = node("number", "val")
+
 local function nodeAssign(id, exp)
   if exp then
     return { tag = "assignment", id = id, exp = exp }
@@ -52,28 +89,12 @@ local function nodeAssign(id, exp)
   end
 end
 
-local function nodeConsole(exp)
-  return { tag = "console", exp = exp }
-end
-
-local function nodeNum(num)
-  return { tag = "number", val = tonumber(num) }
-end
-
-local function nodeReturn(exp)
-  return { tag = "return", exp = exp }
-end
-
 local function nodeSequence(st1, st2)
   if st2 then
     return { tag = "sequence", st1 = st1, st2 = st2 }
   else
     return st1
   end
-end
-
-local function nodeVariable(var)
-  return { tag = "variable", var = var }
 end
 
 -- Tokens
@@ -88,9 +109,6 @@ local alphanum = alpha + digit + underscore
 local numeral = digit ^ 1
 
 -- Utilties For Tokens and Reserved Words
-
--- My preference is not to use this function,
--- but keeping it here for reference
 
 local function Token(t)
   return t * space
@@ -109,6 +127,9 @@ local function ReservedWord(rw)
   assert(excludedWords:match(rw))
   return rw * -alphanum * space
 end
+
+-- My preference is not to use this function,
+-- but keeping it here for reference
 
 local function ReservedWordsWithMatches(input, position)
   for i = 1, #reservedWords do
@@ -134,12 +155,11 @@ local multilineComment = "#{" * (lpeg.P(1) - "#}") ^ 0 - "#}"
 
 -- Numbers
 local float = (numeral * decimal * numeral ^ -1) + (decimal * numeral)
-local floatingPoint = float / nodeNum
-local hexadecimal = "0" * lpeg.S("Xx") * lpeg.R("09", "af", "AF") ^ 1 / nodeNum
-local integer = numeral ^ 1 / nodeNum
-local scientific = (float + numeral) * lpeg.S("Ee") * lpeg.P("-") ^ -1 * numeral / nodeNum
+local hexadecimal = "0" * lpeg.S("Xx") * lpeg.R("09", "af", "AF") ^ 1
+local integer = numeral ^ 1
+local scientific = (float + numeral) * lpeg.S("Ee") * lpeg.P("-") ^ -1 * numeral
 
-local numbers = (hexadecimal + scientific + floatingPoint + integer) * space
+local numbers = (hexadecimal + scientific + float + integer) / tonumber / nodeNum * space
 
 -- Parenthesis and Braces
 local OP = Token("(")
