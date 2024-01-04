@@ -76,6 +76,12 @@ function VM.run(code, mem, stack)
         pc = code[pc]
       end
       top = top - 1
+    elseif code[pc] == "jumpRelative" then
+      pc = pc + 1
+      if stack[top] == 0 or stack[top] == nil then
+        pc = pc + code[pc]
+      end
+      top = top - 1
     else
       error("unknown instruction")
     end

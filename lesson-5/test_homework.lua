@@ -78,6 +78,26 @@ function TestSuite:testScientificAdditionWithNoLeadingInteger()
   luaunit.assertEquals(Main("x = .2e3 + 1e3; return x"), 1200)
 end
 
+function TestSuite:testIfStatementWithTrue()
+  local condition = [[
+    a = 5;
+    if a { b = 6 };
+    return b
+  ]]
+
+  luaunit.assertEquals(Main(condition), 6)
+end
+
+function TestSuite:testIfStatementWithFalse()
+  local condition = [[
+    a = 0;
+    if a { b = 6 };
+    return b
+  ]]
+
+  luaunit.assertEquals(Main(condition), nil)
+end
+
 --[[
 function TestStatements()
   luaunit.assertEquals(Main("e = 0 ^ 0; return e"), 1)

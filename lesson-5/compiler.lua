@@ -29,6 +29,10 @@ function Compiler:correctJump(jump)
   self.code[jump] = self:currentPosition()
 end
 
+function Compiler:correctJumpRelative(jump)
+  self.code[jump] = self:currentPosition() - jump
+end
+
 function Compiler:currentPosition()
   return #self.code
 end
@@ -91,10 +95,17 @@ function Compiler:codeStatement(ast)
     self:codeExpression(ast.exp)
     self:addCode("console")
   elseif ast.tag == "if1" then
+    -- Jump Zero
     self:codeExpression(ast.cond)
     local jump = self:codeJump("jumpZero")
     self:codeStatement(ast.th)
     self:correctJump(jump)
+
+    -- JumpRelative
+    -- self:codeExpression(ast.cond)
+    -- local jump = self:codeJump("jumpRelative")
+    -- self:codeStatement(ast.th)
+    -- self:correctJumpRelative(jump)
   elseif ast.tag == "empty_statement" then
     -- Do nothing
   else
