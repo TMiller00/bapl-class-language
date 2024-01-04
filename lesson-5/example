@@ -1,9 +1,4 @@
-a = 2;
-b = a + 2;
-c = b * 2;
-d = c / 4;
-e = d - 2;
-
-f = (2 + 4) ^ (5 % 3);
-return f
+a = 1;
+if a { g = 5 };
+return g
 

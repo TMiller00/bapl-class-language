@@ -25,6 +25,20 @@ function Compiler:addCode(op)
   code[#code + 1] = op
 end
 
+function Compiler:correctJump(jump)
+  self.code[jump] = self:currentPosition()
+end
+
+function Compiler:currentPosition()
+  return #self.code
+end
+
+function Compiler:codeJump(op)
+  self:addCode(op)
+  self:addCode(0)
+  return self:currentPosition()
+end
+
 function Compiler:encodeVariable(id, op)
   local num = self.vars[id]
 
@@ -76,6 +90,11 @@ function Compiler:codeStatement(ast)
   elseif ast.tag == "console" then
     self:codeExpression(ast.exp)
     self:addCode("console")
+  elseif ast.tag == "if1" then
+    self:codeExpression(ast.cond)
+    local jump = self:codeJump("jumpZero")
+    self:codeStatement(ast.th)
+    self:correctJump(jump)
   elseif ast.tag == "empty_statement" then
     -- Do nothing
   else

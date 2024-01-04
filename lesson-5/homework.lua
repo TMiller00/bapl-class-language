@@ -25,7 +25,7 @@ function Main(input)
   return stack[1]
 end
 
--- print(pt.pt(Main()))
+print(pt.pt(Main()))
 -- Main()
 
 return Main

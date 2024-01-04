@@ -52,7 +52,7 @@ local function node(tag, ...)
     "return function (%s) return {tag = '%s', %s} end",
     params, tag, fields
   )
-  return load(code)()
+  return assert(load(code))()
 end
 
 local function altNode(tag, ...)
@@ -80,6 +80,7 @@ local nodeConsole = node("console", "exp")
 local nodeReturn = node("return", "exp")
 local nodeVariable = node("variable", "var")
 local nodeNum = node("number", "val")
+local nodeIf = node("if1", "cond", "th")
 
 local function nodeAssign(id, exp)
   if exp then
@@ -149,6 +150,7 @@ local Assgn = Token("=")
 local SC = Token(";")
 local ret = ReservedWord("return")
 local console = Token("@")
+local if1 = ReservedWord("if")
 
 local comment = lpeg.P("#") * (lpeg.P(1) - "\n") ^ 0
 local multilineComment = "#{" * (lpeg.P(1) - "#}") ^ 0 - "#}"
@@ -224,6 +226,7 @@ g = lpeg.P { "program",
   block = OB * statements * (SC ^ -1) * CB,
   statement =
       block +
+      (if1 * expression * block) / nodeIf +
       (ID * Assgn * expression) / nodeAssign +
       (ret * expression) / nodeReturn +
       (console * expression) / nodeConsole,
