@@ -19,13 +19,13 @@ function Main(input)
   end
 
   local ast = parser.parse(input)
-  local code = compiler(ast)
+  local code = compiler.compile(ast)
   vm.run(code, mem, stack)
 
   return stack[1]
 end
 
-print(pt.pt(Main()))
+-- print(pt.pt(Main()))
 -- Main()
 
 return Main

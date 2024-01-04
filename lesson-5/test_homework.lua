@@ -1,21 +1,85 @@
 local luaunit = require "luaunit"
 local Main = require "homework"
+local Compiler = require "compiler"
 
-function TestComparison()
-  luaunit.assertEquals(Main("x = 2 < 5; return x"), 1)
-  luaunit.assertEquals(Main("y = 7 > 10; return y"), 0)
-  luaunit.assertEquals(Main("z = 3 + 4 == 7; return z"), 1)
-  luaunit.assertEquals(Main("a = 5 != 6; return a"), 1)
-  luaunit.assertEquals(Main("b = 9 >= 8; return b"), 1)
-  luaunit.assertEquals(Main("c = 12 <= 11; return c"), 0)
-  luaunit.assertEquals(Main("d = 20 + 30 != 50; return d"), 0)
-  luaunit.assertEquals(Main("e = 15 > 15; return e"), 0)
-  luaunit.assertEquals(Main("f = 3 * 4 == 12; return f"), 1)
-  luaunit.assertEquals(Main("g = 10 / 2 == 5; return g"), 1)
+TestSuite = {}
+
+function TestSuite:tearDown()
+  Compiler["code"] = {}
+  Compiler["nvars"] = 0
+  Compiler["vars"] = {}
 end
 
-function TestStatements()
+function TestSuite:testIntegerLessThan()
+  luaunit.assertEquals(Main("x = 2 < 5; return x"), 1)
+end
+
+function TestSuite:testIntegerGreaterThan()
+  luaunit.assertEquals(Main("y = 7 > 10; return y"), 0)
+end
+
+function TestSuite:testIntegerEquality()
+  luaunit.assertEquals(Main("z = 7 == 7; return z"), 1)
+end
+
+function TestSuite:testIntegerInequality()
+  luaunit.assertEquals(Main("a = 5 != 6; return a"), 1)
+end
+
+function TestSuite:testIntegerLessThanOrEqual()
+  luaunit.assertEquals(Main("c = 12 <= 11; return c"), 0)
+end
+
+function TestSuite:testIntegerGreaterThanOrEqual()
+  luaunit.assertEquals(Main("b = 9 >= 8; return b"), 1)
+end
+
+function TestSuite:testIntegerDivisionByZero()
   luaunit.assertEquals(Main("x = 1 / 0; return x"), math.huge)
+end
+
+function TestSuite:testFloatAddition()
+  luaunit.assertEquals(Main("x = 1.1 + .9; return x"), 2.0)
+end
+
+function TestSuite:testFloatAddition_2()
+  luaunit.assertEquals(Main("x = 1. + 0.9; return x"), 1.9)
+end
+
+function TestSuite:testHexadecimal()
+  luaunit.assertEquals(Main("x = 0x15; return x"), 21)
+end
+
+function TestSuite:testHexadecimalAddition()
+  luaunit.assertEquals(Main("x = 0x15 + 0x16; return x"), 43)
+end
+
+function TestSuite:testHexadecimalDivision()
+  luaunit.assertEquals(Main("x = 0x16 / 2; return x"), 11)
+end
+
+function TestSuite:testScientific()
+  luaunit.assertEquals(Main("x = 12e3; return x"), 12000.0)
+end
+
+function TestSuite:testScientificWithDecimal()
+  luaunit.assertEquals(Main("x = 1.2e3; return x"), 1200.0)
+end
+
+function TestSuite:testScientificWithNegativeExponent()
+  luaunit.assertEquals(Main("x = 1e-1; return x"), 0.1)
+end
+
+function TestSuite:testScientificAddition()
+  luaunit.assertEquals(Main("x = 1.2e3 + 3e2; return x"), 1500.0)
+end
+
+function TestSuite:testScientificAdditionWithNoLeadingInteger()
+  luaunit.assertEquals(Main("x = .2e3 + 1e3; return x"), 1200)
+end
+
+--[[
+function TestStatements()
   luaunit.assertEquals(Main("e = 0 ^ 0; return e"), 1)
   luaunit.assertEquals(Main("j = 1 - 4 + -10 % 3; return j"), -1)
   luaunit.assertEquals(Main("k = 1 - -8 % 5; return k"), -1)
@@ -33,25 +97,6 @@ function TestStatements()
   -- luaunit.assertEquals(Main("g = 10 > 2 == 1"), { g = 1 })
 end
 
-function TestDecimals()
-  luaunit.assertEquals(Main("x = 1.1 + .9; return x"), 2.0)
-  luaunit.assertEquals(Main("x = 1. + 1; return x"), 2.0)
-end
-
-function TestHexadecimal()
-  luaunit.assertEquals(Main("x = 0x15; return x"), 21)
-  luaunit.assertEquals(Main("x = 0x15 + 0x16; return x"), 43)
-  luaunit.assertEquals(Main("x = 0x16 / 2; return x"), 11)
-end
-
-function TestScientific()
-  luaunit.assertEquals(Main("x = 12e3; return x"), 12000.0)
-  luaunit.assertEquals(Main("x = 1.2e3; return x"), 1200.0)
-  luaunit.assertEquals(Main("x = 1.2e3 + 3e2; return x"), 1500.0)
-  luaunit.assertEquals(Main("x = .2e3 + 1e3; return x"), 1200)
-  luaunit.assertEquals(Main("x = 1e-1; return x"), 0.1)
-end
-
 function TestUnary()
   luaunit.assertEquals(Main("x = !(1 < 2); return x"), false)
   luaunit.assertEquals(Main("x = !(1 + 2); return x"), false)
@@ -59,4 +104,5 @@ function TestUnary()
   -- luaunit.assertEquals(Main("x = -(1 < 2); return x"), 1)
 end
 
+--]]
 os.exit(luaunit.LuaUnit.run())

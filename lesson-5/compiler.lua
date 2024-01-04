@@ -102,7 +102,7 @@ function Compiler:codeStatement(ast)
   end
 end
 
-local function compiler(ast)
+function Compiler.compile(ast)
   Compiler:codeStatement(ast)
 
   Compiler:addCode("push")
@@ -112,4 +112,4 @@ local function compiler(ast)
   return Compiler.code
 end
 
-return compiler
+return Compiler
