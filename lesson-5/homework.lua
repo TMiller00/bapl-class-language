@@ -18,9 +18,8 @@ function Main(input)
     input = io.read("*all")
   end
 
-
   local ast = parser.parse(input)
-  local code = compiler.compile(ast)
+  local code = compiler(ast)
   vm.run(code, mem, stack)
 
   return stack[1]

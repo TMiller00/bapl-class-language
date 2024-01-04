@@ -18,21 +18,23 @@ local unaryOps = {
   ["!"] = "not"
 }
 
-local function addCode(state, op)
-  local code = state.code
+local Compiler = { code = {}, vars = {}, nvars = 0 }
+
+function Compiler:addCode(op)
+  local code = self.code
   code[#code + 1] = op
 end
 
-local function encodeVariable(op, state, id)
-  local num = state.vars[id]
+function Compiler:encodeVariable(id, op)
+  local num = self.vars[id]
 
   if not num then
     if op == "load" then
       error("Undefined variable")
     elseif op == "store" then
-      num = state.nvars + 1
-      state.nvars = num
-      state.vars[id] = num
+      num = self.nvars + 1
+      self.nvars = num
+      self.vars[id] = num
     else
       error("Undefined op code")
     end
@@ -41,39 +43,39 @@ local function encodeVariable(op, state, id)
   return num
 end
 
-local function codeExpression(state, ast)
+function Compiler:codeExpression(ast)
   if ast.tag == "number" then
-    addCode(state, "push")
-    addCode(state, ast.val)
+    self:addCode("push")
+    self:addCode(ast.val)
   elseif ast.tag == "binop" then
-    codeExpression(state, ast.e1)
-    codeExpression(state, ast.e2)
-    addCode(state, binaryOps[ast.op])
+    self:codeExpression(ast.e1)
+    self:codeExpression(ast.e2)
+    self:addCode(binaryOps[ast.op])
   elseif ast.tag == "unaryop" then
-    codeExpression(state, ast.exp)
-    addCode(state, unaryOps[ast.op])
+    self:codeExpression(ast.exp)
+    self:addCode(unaryOps[ast.op])
   elseif ast.tag == "variable" then
-    addCode(state, "load")
-    addCode(state, encodeVariable("load", state, ast.var))
+    self:addCode("load")
+    self:addCode(self:encodeVariable(ast.var, "load"))
   else
     error("invalid tree")
   end
 end
 
-local function codeStatement(state, ast)
+function Compiler:codeStatement(ast)
   if ast.tag == "assignment" then
-    codeExpression(state, ast.exp)
-    addCode(state, "store")
-    addCode(state, encodeVariable("store", state, ast.id))
+    self:codeExpression(ast.exp)
+    self:addCode("store")
+    self:addCode(self:encodeVariable(ast.id, "store"))
   elseif ast.tag == "sequence" then
-    codeStatement(state, ast.st1)
-    codeStatement(state, ast.st2)
+    self:codeStatement(ast.st1)
+    self:codeStatement(ast.st2)
   elseif ast.tag == "return" then
-    codeExpression(state, ast.exp)
-    addCode(state, "return")
+    self:codeExpression(ast.exp)
+    self:addCode("return")
   elseif ast.tag == "console" then
-    codeExpression(state, ast.exp)
-    addCode(state, "console")
+    self:codeExpression(ast.exp)
+    self:addCode("console")
   elseif ast.tag == "empty_statement" then
     -- Do nothing
   else
@@ -81,17 +83,14 @@ local function codeStatement(state, ast)
   end
 end
 
-local Compiler = {}
+local function compiler(ast)
+  Compiler:codeStatement(ast)
 
-function Compiler.compile(ast)
-  local state = { code = {}, vars = {}, nvars = 0 }
-  codeStatement(state, ast)
+  Compiler:addCode("push")
+  Compiler:addCode(0)
+  Compiler:addCode("return")
 
-  addCode(state, "push")
-  addCode(state, 0)
-  addCode(state, "return")
-
-  return state.code
+  return Compiler.code
 end
 
-return Compiler
+return compiler
