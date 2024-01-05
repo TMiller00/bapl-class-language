@@ -80,7 +80,14 @@ local nodeConsole = node("console", "exp")
 local nodeReturn = node("return", "exp")
 local nodeVariable = node("variable", "var")
 local nodeNum = node("number", "val")
-local nodeIf = node("if1", "cond", "th", "el")
+
+local function nodeIf(cond, th, el, th2, el2)
+  if el and el.tag == "binop" then
+    return { tag = "if1", cond = cond, th = th, el = nodeIf(el, th2, el2) }
+  else
+    return { tag = "if1", cond = cond, th = th, el = el }
+  end
+end
 
 local function nodeAssign(id, exp)
   if exp then
@@ -115,7 +122,7 @@ local function Token(t)
   return t * space
 end
 
-local reservedWords = { "return", "if", "else" }
+local reservedWords = { "return", "if", "elseif", "else" }
 local excludedWords = lpeg.P(false)
 
 for i = 1, #reservedWords do
@@ -151,6 +158,7 @@ local SC = Token(";")
 local ret = ReservedWord("return")
 local console = Token("@")
 local if1 = ReservedWord("if")
+local elseif1 = ReservedWord("elseif")
 local else1 = ReservedWord("else")
 
 local comment = lpeg.P("#") * (lpeg.P(1) - "\n") ^ 0
@@ -227,7 +235,7 @@ g = lpeg.P { "program",
   block = OB * statements * (SC ^ -1) * CB,
   statement =
       block +
-      if1 * expression * block * (else1 * block) ^ -1 / nodeIf +
+      (if1 * expression * block) * (elseif1 * expression * block) ^ 0 * (else1 * block) ^ -1 / nodeIf +
       (ID * Assgn * expression) / nodeAssign +
       (ret * expression) / nodeReturn +
       (console * expression) / nodeConsole,

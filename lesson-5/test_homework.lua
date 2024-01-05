@@ -115,7 +115,7 @@ end
 function TestSuite:testIfElseStatementWithFalse()
   local condition = [[
     a = 0;
-    if a {
+    if a == 1 {
       b = 6
     } else {
       b = 7
@@ -124,6 +124,38 @@ function TestSuite:testIfElseStatementWithFalse()
   ]]
 
   luaunit.assertEquals(Main(condition), 7)
+end
+
+function TestSuite:testIfElseIfStatementWithTrue()
+  local condition = [[
+    a = 1;
+    if a == 0 {
+      b = 6
+    } elseif a == 1 {
+      b = 7
+    } else {
+      b = 8
+    };
+    return b
+  ]]
+
+  luaunit.assertEquals(Main(condition), 7)
+end
+
+function TestSuite:testIfElseIfStatementWithFalse()
+  local condition = [[
+    a = 1;
+    if a == 0 {
+      b = 6
+    } elseif a == 0 {
+      b = 7
+    } else {
+      b = 8
+    };
+    return b
+  ]]
+
+  luaunit.assertEquals(Main(condition), 8)
 end
 
 --[[
