@@ -80,6 +80,7 @@ local nodeConsole = node("console", "exp")
 local nodeReturn = node("return", "exp")
 local nodeVariable = node("variable", "var")
 local nodeNum = node("number", "val")
+local nodeWhile = node("_while", "cond", "body")
 
 local function nodeIf(cond, th, el, th2, el2)
   if el and el.tag == "binop" then
@@ -122,7 +123,7 @@ local function Token(t)
   return t * space
 end
 
-local reservedWords = { "return", "if", "elseif", "else" }
+local reservedWords = { "return", "if", "elseif", "else", "while" }
 local excludedWords = lpeg.P(false)
 
 for i = 1, #reservedWords do
@@ -160,6 +161,7 @@ local console = Token("@")
 local if1 = ReservedWord("if")
 local elseif1 = ReservedWord("elseif")
 local else1 = ReservedWord("else")
+local _while = ReservedWord("while")
 
 local comment = lpeg.P("#") * (lpeg.P(1) - "\n") ^ 0
 local multilineComment = "#{" * (lpeg.P(1) - "#}") ^ 0 - "#}"
@@ -236,6 +238,7 @@ g = lpeg.P { "program",
   statement =
       block +
       (if1 * expression * block) * (elseif1 * expression * block) ^ 0 * (else1 * block) ^ -1 / nodeIf +
+      (_while * expression * block) / nodeWhile +
       (ID * Assgn * expression) / nodeAssign +
       (ret * expression) / nodeReturn +
       (console * expression) / nodeConsole,

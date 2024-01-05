@@ -158,6 +158,22 @@ function TestSuite:testIfElseIfStatementWithFalse()
   luaunit.assertEquals(Main(condition), 8)
 end
 
+function TestSuite:testWhile()
+  local loop = [[
+    n = 6;
+    c = 1;
+
+    while n {
+      c = c * n;
+      n = n - 1;
+    };
+
+    return c
+    ]]
+
+  luaunit.assertEquals(Main(loop), 720)
+end
+
 --[[
 function TestStatements()
   luaunit.assertEquals(Main("e = 0 ^ 0; return e"), 1)

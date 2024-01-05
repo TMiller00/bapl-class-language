@@ -43,6 +43,11 @@ function Compiler:codeJump(op)
   return self:currentPosition()
 end
 
+function Compiler:codeJumpBackWard(op, label)
+  self:addCode(op)
+  self:addCode(label)
+end
+
 function Compiler:encodeVariable(id, op)
   local num = self.vars[id]
 
@@ -94,6 +99,13 @@ function Compiler:codeStatement(ast)
   elseif ast.tag == "console" then
     self:codeExpression(ast.exp)
     self:addCode("console")
+  elseif ast.tag == "_while" then
+    local initialLabel = self:currentPosition()
+    self:codeExpression(ast.cond)
+    local jump = self:codeJump("jumpZero")
+    self:codeStatement(ast.body)
+    self:codeJumpBackWard("jumpRegular", initialLabel)
+    self:correctJump(jump)
   elseif ast.tag == "if1" then
     -- Jump Zero
     self:codeExpression(ast.cond)
