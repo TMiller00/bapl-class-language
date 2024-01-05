@@ -1,4 +1,8 @@
 a = 0;
-if a { g = 5 };
+if a {
+  g = 5
+} else {
+  g = 6
+};
 return g
 

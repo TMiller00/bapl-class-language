@@ -98,6 +98,34 @@ function TestSuite:testIfStatementWithFalse()
   luaunit.assertEquals(Main(condition), nil)
 end
 
+function TestSuite:testIfElseStatementWithTrue()
+  local condition = [[
+    a = 1;
+    if a {
+      b = 6
+    } else {
+      b = 7
+    };
+    return b
+  ]]
+
+  luaunit.assertEquals(Main(condition), 6)
+end
+
+function TestSuite:testIfElseStatementWithFalse()
+  local condition = [[
+    a = 0;
+    if a {
+      b = 6
+    } else {
+      b = 7
+    };
+    return b
+  ]]
+
+  luaunit.assertEquals(Main(condition), 7)
+end
+
 --[[
 function TestStatements()
   luaunit.assertEquals(Main("e = 0 ^ 0; return e"), 1)

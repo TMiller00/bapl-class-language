@@ -80,7 +80,7 @@ local nodeConsole = node("console", "exp")
 local nodeReturn = node("return", "exp")
 local nodeVariable = node("variable", "var")
 local nodeNum = node("number", "val")
-local nodeIf = node("if1", "cond", "th")
+local nodeIf = node("if1", "cond", "th", "el")
 
 local function nodeAssign(id, exp)
   if exp then
@@ -115,7 +115,7 @@ local function Token(t)
   return t * space
 end
 
-local reservedWords = { "return", "if" }
+local reservedWords = { "return", "if", "else" }
 local excludedWords = lpeg.P(false)
 
 for i = 1, #reservedWords do
@@ -151,6 +151,7 @@ local SC = Token(";")
 local ret = ReservedWord("return")
 local console = Token("@")
 local if1 = ReservedWord("if")
+local else1 = ReservedWord("else")
 
 local comment = lpeg.P("#") * (lpeg.P(1) - "\n") ^ 0
 local multilineComment = "#{" * (lpeg.P(1) - "#}") ^ 0 - "#}"
@@ -226,7 +227,7 @@ g = lpeg.P { "program",
   block = OB * statements * (SC ^ -1) * CB,
   statement =
       block +
-      (if1 * expression * block) / nodeIf +
+      if1 * expression * block * (else1 * block) ^ -1 / nodeIf +
       (ID * Assgn * expression) / nodeAssign +
       (ret * expression) / nodeReturn +
       (console * expression) / nodeConsole,

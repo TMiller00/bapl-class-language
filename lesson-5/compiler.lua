@@ -99,7 +99,15 @@ function Compiler:codeStatement(ast)
     self:codeExpression(ast.cond)
     local jump = self:codeJump("jumpZero")
     self:codeStatement(ast.th)
-    self:correctJump(jump)
+
+    if ast.el == nil then
+      self:correctJump(jump)
+    else
+      local jump2 = self:codeJump("jumpRegular")
+      self:correctJump(jump)
+      self:codeStatement(ast.el)
+      self:correctJump(jump2)
+    end
 
     -- JumpRelative
     -- self:codeExpression(ast.cond)

@@ -70,16 +70,18 @@ function VM.run(code, mem, stack)
       local id = code[pc]
       mem[id] = stack[top]
       top = top - 1
-    elseif code[pc] == "jumpZero" then
-      pc = pc + 1
-      if stack[top] == 0 or stack[top] == nil then
-        pc = code[pc]
-      end
-      top = top - 1
+    elseif code[pc] == "jumpRegular" then
+      pc = code[pc + 1]
     elseif code[pc] == "jumpRelative" then
       pc = pc + 1
       if stack[top] == 0 or stack[top] == nil then
         pc = pc + code[pc]
+      end
+      top = top - 1
+    elseif code[pc] == "jumpZero" then
+      pc = pc + 1
+      if stack[top] == 0 or stack[top] == nil then
+        pc = code[pc]
       end
       top = top - 1
     else
