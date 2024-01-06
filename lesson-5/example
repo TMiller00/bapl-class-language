@@ -1,9 +1,2 @@
-n = 6;
-c = 1;
-
-while n {
-  c = c * n;
-  n = n - 1;
-};
-
-return c
+a = 0 or 2;
+return a

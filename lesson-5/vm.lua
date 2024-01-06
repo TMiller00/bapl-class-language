@@ -1,4 +1,5 @@
 local VM = {}
+local pt = require "pt"
 
 function VM.run(code, mem, stack)
   local pc = 1
@@ -84,6 +85,20 @@ function VM.run(code, mem, stack)
         pc = code[pc]
       end
       top = top - 1
+    elseif code[pc] == "jumpZeroPop" then
+      pc = pc + 1
+      if stack[top] == 0 or stack[top] == nil then
+        pc = code[pc]
+      else
+        top = top - 1
+      end
+    elseif code[pc] == "jumpNonZeroPop" then
+      pc = pc + 1
+      if stack[top] == 0 or stack[top] == nil then
+        top = top - 1
+      else
+        pc = code[pc]
+      end
     else
       error("unknown instruction")
     end

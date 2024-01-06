@@ -123,7 +123,7 @@ local function Token(t)
   return t * space
 end
 
-local reservedWords = { "return", "if", "elseif", "else", "while" }
+local reservedWords = { "return", "if", "elseif", "else", "while", "and", "or" }
 local excludedWords = lpeg.P(false)
 
 for i = 1, #reservedWords do
@@ -186,6 +186,7 @@ local comparisonOps = lpeg.P("<=") + lpeg.P(">=") + lpeg.P("<") + lpeg.P(">")
 local termOps = lpeg.P("+") + lpeg.P("-")
 local factorOps = lpeg.P("*") + lpeg.P("/") + lpeg.P("%")
 local unaryOps = lpeg.P("!") + lpeg.P("-")
+local logicalOps = lpeg.P("and") + lpeg.P("or")
 
 local opComparison = lpeg.C(comparisonOps) * space
 local opEquality = lpeg.C(equalityOps) * space
@@ -193,6 +194,7 @@ local opTerm = lpeg.C(termOps) * space
 local opFactor = lpeg.C(factorOps) * space
 local opUnary = lpeg.C(unaryOps)
 local opExp = lpeg.C(lpeg.P("^")) * space
+local opLogical = lpeg.C(logicalOps) * space
 
 -- Variables
 local ID = (lpeg.C((underscore ^ 0) * alpha * alphanum ^ 0) - excludedWords) * space
@@ -229,6 +231,7 @@ local factor = lpeg.V("factor")
 local term = lpeg.V("term")
 local comparison = lpeg.V("comparison")
 local equality = lpeg.V("equality")
+local logical = lpeg.V("logical")
 local expression = lpeg.V("expression")
 
 g = lpeg.P { "program",
@@ -249,7 +252,8 @@ g = lpeg.P { "program",
   term = lpeg.Ct(factor * (opTerm * factor) ^ 0) / foldBin,
   comparison = lpeg.Ct(term * (opComparison * term) ^ 0) / foldBin,
   equality = lpeg.Ct(comparison * (opEquality * comparison) ^ 0) / foldBin,
-  expression = equality,
+  logical = lpeg.Ct(equality * (opLogical * equality) ^ 0) / foldBin,
+  expression = logical,
   space = (lpeg.S(" \t\n") + multilineComment + comment) ^ 0 * lpeg.P(matchPosition)
 }
 

@@ -174,6 +174,23 @@ function TestSuite:testWhile()
   luaunit.assertEquals(Main(loop), 720)
 end
 
+-- Logical operators
+function TestSuite:testAndWithTrue()
+  luaunit.assertEquals(Main("a = 4 and 5; return a"), 5)
+end
+
+function TestSuite:testAndWithFalse()
+  luaunit.assertEquals(Main("a = 0 and 3; return a"), 0)
+end
+
+function TestSuite:testOrWithTrue()
+  luaunit.assertEquals(Main("a = 0 or 10; return a"), 10)
+end
+
+function TestSuite:testOrWithFalse()
+  luaunit.assertEquals(Main("a = 2 or 3; return a"), 2)
+end
+
 --[[
 function TestStatements()
   luaunit.assertEquals(Main("e = 0 ^ 0; return e"), 1)

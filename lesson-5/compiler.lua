@@ -11,6 +11,8 @@ local binaryOps = {
   ["<="] = "lte",
   ["=="] = "eq",
   ["!="] = "neq",
+  ["and"] = "and",
+  ["or"] = "or",
 }
 
 local unaryOps = {
@@ -71,9 +73,21 @@ function Compiler:codeExpression(ast)
     self:addCode("push")
     self:addCode(ast.val)
   elseif ast.tag == "binop" then
-    self:codeExpression(ast.e1)
-    self:codeExpression(ast.e2)
-    self:addCode(binaryOps[ast.op])
+    if ast.op == "and" then
+      self:codeExpression(ast.e1)
+      local jump = self:codeJump("jumpZeroPop")
+      self:codeExpression(ast.e2)
+      self:correctJump(jump)
+    elseif ast.op == "or" then
+      self:codeExpression(ast.e1)
+      local jump = self:codeJump("jumpNonZeroPop")
+      self:codeExpression(ast.e2)
+      self:correctJump(jump)
+    else
+      self:codeExpression(ast.e1)
+      self:codeExpression(ast.e2)
+      self:addCode(binaryOps[ast.op])
+    end
   elseif ast.tag == "unaryop" then
     self:codeExpression(ast.exp)
     self:addCode(unaryOps[ast.op])
