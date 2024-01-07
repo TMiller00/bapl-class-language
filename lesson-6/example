@@ -1,0 +1,11 @@
+n = 10;
+c = 1;
+
+while n {
+  if n % 2 == 0 {
+    c = c * n;
+  };
+  n = n - 1;
+};
+
+return c
