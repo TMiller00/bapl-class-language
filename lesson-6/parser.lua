@@ -81,6 +81,8 @@ local nodeReturn = node("return", "exp")
 local nodeVariable = node("variable", "var")
 local nodeNum = node("number", "val")
 local nodeWhile = node("_while", "cond", "body")
+local nodeIndexed = node("indexed", "array", "index")
+local nodeNew = node("new", "size")
 
 local function nodeIf(cond, th, el, th2, el2)
   if el and el.tag == "binop" then
@@ -90,9 +92,9 @@ local function nodeIf(cond, th, el, th2, el2)
   end
 end
 
-local function nodeAssign(id, exp)
+local function nodeAssign(lhs, exp)
   if exp then
-    return { tag = "assignment", id = id, exp = exp }
+    return { tag = "assignment", lhs = lhs, exp = exp }
   else
     return { tag = "empty_statement" }
   end
@@ -123,7 +125,7 @@ local function Token(t)
   return t * space
 end
 
-local reservedWords = { "return", "if", "elseif", "else", "while", "and", "or" }
+local reservedWords = { "return", "if", "elseif", "else", "while", "and", "or", "new" }
 local excludedWords = lpeg.P(false)
 
 for i = 1, #reservedWords do
@@ -162,6 +164,7 @@ local if1 = ReservedWord("if")
 local elseif1 = ReservedWord("elseif")
 local else1 = ReservedWord("else")
 local _while = ReservedWord("while")
+local _new = ReservedWord("new")
 
 local comment = lpeg.P("#") * (lpeg.P(1) - "\n") ^ 0
 local multilineComment = "#{" * (lpeg.P(1) - "#}") ^ 0 - "#}"
@@ -179,6 +182,8 @@ local OP = Token("(")
 local CP = Token(")")
 local OB = Token("{")
 local CB = Token("}")
+local OBrkt = Token("[")
+local CBrkt = Token("]")
 
 -- Operators
 local equalityOps = lpeg.P("==") + lpeg.P("!=")
@@ -221,6 +226,7 @@ local function foldUnary(lst)
   return { tag = "unaryop", op = lst[1], exp = lst[2] }
 end
 
+local leftHandSide = lpeg.V("leftHandSide")
 local statements = lpeg.V("statements")
 local block = lpeg.V("block")
 local statement = lpeg.V("statement")
@@ -242,10 +248,15 @@ g = lpeg.P { "program",
       block +
       (if1 * expression * block) * (elseif1 * expression * block) ^ 0 * (else1 * block) ^ -1 / nodeIf +
       (_while * expression * block) / nodeWhile +
-      (ID * Assgn * expression) / nodeAssign +
+      (leftHandSide * Assgn * expression) / nodeAssign +
       (ret * expression) / nodeReturn +
       (console * expression) / nodeConsole,
-  primary = numbers + OP * expression * CP + variable,
+  leftHandSide = variable * OBrkt * expression * CBrkt / nodeIndexed + variable,
+  primary =
+      _new * OBrkt * expression * CBrkt / nodeNew +
+      numbers +
+      OP * expression * CP +
+      leftHandSide,
   power = lpeg.Ct(primary * (opExp * unary) ^ 0) / foldBin,
   unary = lpeg.Ct(opUnary * unary) / foldUnary + power,
   factor = lpeg.Ct(unary * (opFactor * unary) ^ 0) / foldBin,
