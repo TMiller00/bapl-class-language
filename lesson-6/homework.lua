@@ -21,6 +21,7 @@ function Main(input)
   local ast = parser.parse(input)
   print(pt.pt(ast))
   local code = compiler.compile(ast)
+  print(pt.pt(code))
   vm.run(code, mem, stack)
 
   return stack[1]

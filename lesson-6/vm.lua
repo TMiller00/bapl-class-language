@@ -99,6 +99,20 @@ function VM.run(code, mem, stack)
       else
         pc = code[pc]
       end
+    elseif code[pc] == "newArray" then
+      local size = stack[top]
+      stack[top] = { size = size }
+    elseif code[pc] == "getArray" then
+      local array = stack[top - 1]
+      local index = stack[top]
+      stack[top - 1] = array[index]
+      top = top - 1
+    elseif code[pc] == "setArray" then
+      local array = stack[top - 2]
+      local index = stack[top - 1]
+      local value = stack[top]
+      array[index] = value
+      top = top - 3
     else
       error("unknown instruction")
     end
