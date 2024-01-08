@@ -1,3 +1,5 @@
+local pt = require "pt"
+
 local binaryOps = {
   ["+"] = "add",
   ["-"] = "sub",
@@ -94,16 +96,37 @@ function Compiler:codeExpression(ast)
   elseif ast.tag == "variable" then
     self:addCode("load")
     self:addCode(self:encodeVariable(ast.var, "load"))
+  elseif ast.tag == "indexed" then
+    self:codeExpression(ast.array)
+    self:codeExpression(ast.index)
+    self:addCode("getArray")
+  elseif ast.tag == "new" then
+    self:codeExpression(ast.size)
+    self:addCode("newArray")
   else
     error("invalid tree")
   end
 end
 
-function Compiler:codeStatement(ast)
-  if ast.tag == "assignment" then
+function Compiler:codeAssignment(ast)
+  local lhs = ast.lhs
+  if lhs.tag == "variable" then
     self:codeExpression(ast.exp)
     self:addCode("store")
-    self:addCode(self:encodeVariable(ast.id, "store"))
+    self:addCode(self:encodeVariable(lhs.var, "store"))
+  elseif lhs.tag == "indexed" then
+    self:codeExpression(lhs.array)
+    self:codeExpression(lhs.index)
+    self:codeExpression(ast.exp)
+    self:addCode("setArray")
+  else
+    error("Unknown tag")
+  end
+end
+
+function Compiler:codeStatement(ast)
+  if ast.tag == "assignment" then
+    self:codeAssignment(ast)
   elseif ast.tag == "sequence" then
     self:codeStatement(ast.st1)
     self:codeStatement(ast.st2)
