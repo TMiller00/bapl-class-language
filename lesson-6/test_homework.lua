@@ -270,6 +270,48 @@ function TestSuite:testWhileWithIfStatement()
   luaunit.assertEquals(Main(loop), 3840)
 end
 
+-- -- -- -- --
+-- Arrays   --
+-- -- -- -- --
+
+function TestSuite:testArray()
+  local code = [[
+    a = new [10];
+    a[5] = 23;
+    return a[5]
+  ]]
+
+  luaunit.assertEquals(Main(code), 23)
+end
+
+function TestSuite:testArrayIndexOutOfRange()
+  local code = [[
+    a = new [10];
+    a[11] = 23;
+    return a[5]
+  ]]
+
+  local function callMain()
+    return Main(code)
+  end
+
+  luaunit.assertErrorMsgContains("index out of range", callMain)
+end
+
+function TestSuite:testArrayIndexOutOfRange2()
+  local code = [[
+    a = new [10];
+    a[5] = 23;
+    return a[11]
+  ]]
+
+  local function callMain()
+    return Main(code)
+  end
+
+  luaunit.assertErrorMsgContains("index out of range", callMain)
+end
+
 --[[
 function TestStatements()
   luaunit.assertEquals(Main("m = -5 % -2; return m"), -1)

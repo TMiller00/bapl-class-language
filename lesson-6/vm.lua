@@ -105,13 +105,22 @@ function VM.run(code, mem, stack)
     elseif code[pc] == "getArray" then
       local array = stack[top - 1]
       local index = stack[top]
-      stack[top - 1] = array[index]
+      if index > array.size then
+        error("index out of range")
+      else
+        stack[top - 1] = array[index]
+      end
       top = top - 1
     elseif code[pc] == "setArray" then
       local array = stack[top - 2]
       local index = stack[top - 1]
       local value = stack[top]
-      array[index] = value
+
+      if index > array.size then
+        error("index out of range")
+      else
+        array[index] = value
+      end
       top = top - 3
     else
       error("unknown instruction")
