@@ -15,7 +15,12 @@ function VM.run(code, mem, stack)
     if code[pc] == "return" then
       return
     elseif code[pc] == "console" then
-      io.write(stack[top], "\n")
+      if type(stack[top]) == "table" then
+        local items = table.concat(stack[top], ", ")
+        io.write("[" .. items .. "]", "\n")
+      else
+        io.write(stack[top], "\n")
+      end
       top = top - 1
     elseif code[pc] == "push" then
       pc = pc + 1
