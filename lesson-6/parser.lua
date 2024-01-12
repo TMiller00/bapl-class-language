@@ -81,7 +81,6 @@ local nodeReturn = node("return", "exp")
 local nodeVariable = node("variable", "var")
 local nodeNum = node("number", "val")
 local nodeWhile = node("_while", "cond", "body")
-local nodeIndexed = node("indexed", "array", "index")
 local nodeNew = node("new", "size")
 
 local function nodeIf(cond, th, el, th2, el2)
@@ -226,6 +225,16 @@ local function foldUnary(lst)
   return { tag = "unaryop", op = lst[1], exp = lst[2] }
 end
 
+local function foldIndex(lst)
+  local tree = lst[1]
+
+  for i = 2, #lst, 1 do
+    tree = { tag = "indexed", array = tree, index = lst[i] }
+  end
+
+  return tree
+end
+
 local leftHandSide = lpeg.V("leftHandSide")
 local statements = lpeg.V("statements")
 local block = lpeg.V("block")
@@ -251,7 +260,7 @@ g = lpeg.P { "program",
       (leftHandSide * Assgn * expression) / nodeAssign +
       (ret * expression) / nodeReturn +
       (console * expression) / nodeConsole,
-  leftHandSide = variable * OBrkt * expression * CBrkt / nodeIndexed + variable,
+  leftHandSide = lpeg.Ct(variable * (OBrkt * expression * CBrkt) ^ 0) / foldIndex,
   primary =
       _new * OBrkt * expression * CBrkt / nodeNew +
       numbers +

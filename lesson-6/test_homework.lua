@@ -312,6 +312,20 @@ function TestSuite:testArrayIndexOutOfRange2()
   luaunit.assertErrorMsgContains("index out of range", callMain)
 end
 
+function TestSuite:testMultidimensionalArrays()
+  local code = [[
+    a = new [1];
+    b = new [2];
+    c = new [3];
+    c[1] = 4;
+    b[1] = c;
+    a[1] = b;
+    return a[1][1][1]
+  ]]
+
+  luaunit.assertEquals(Main(code), 4)
+end
+
 --[[
 function TestStatements()
   luaunit.assertEquals(Main("m = -5 % -2; return m"), -1)
